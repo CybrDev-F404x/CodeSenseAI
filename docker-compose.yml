@@ -1,0 +1,24 @@
+version: "3.9" ## Version de docker-compose 
+
+services:
+  postgres:
+    image: postgres:16-alpine ## Imagen de postgres
+    container_name: codesenseai_postgres ## Nombre del container
+    restart: unless-stopped ## Reinicia el container si falla
+    environment:
+      POSTGRES_USER: codesense ## Usuario de postgres
+      POSTGRES_PASSWORD: codesense123 ## Contraseña de postgres
+      POSTGRES_DB: codesenseai ## Base de datos de postgres
+    ports:
+      - "5433:5432" ## Puerto de postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data ## Volumen de postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codesense -d codesenseai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    name: codesenseai_pgdata
