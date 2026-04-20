@@ -189,7 +189,7 @@ El servicio LLM construye un prompt muy específico que:
 
 | Tecnología           | Versión | Rol                                            |
 | -------------------- | ------- | ---------------------------------------------- |
-| **Python**           | 3.14+   | Lenguaje base                                  |
+| **Python**           | 3.12+   | Lenguaje base                                  |
 | **FastAPI**          | 0.115+  | Framework web asíncrono                        |
 | **SQLAlchemy**       | 2.0     | ORM async con soporte para PostgreSQL          |
 | **asyncpg**          | —       | Driver PostgreSQL nativo async                 |
@@ -544,7 +544,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
 
 ### Prerrequisitos
 
-- [Python 3.14+](https://www.python.org/downloads/)
+- [Python 3.12+](https://www.python.org/downloads/)
 - [Node.js 18+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - Cuenta en [Google AI Studio](https://aistudio.google.com/) para obtener la `GEMINI_API_KEY`
