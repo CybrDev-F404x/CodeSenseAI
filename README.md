@@ -246,7 +246,7 @@ La documentación interactiva de la API está disponible en:
 ## Instalación y Configuración
 
 ### Prerrequisitos
-- [Python 3.11+](https://www.python.org/)
+- [Python 3.12+](https://www.python.org/)
 - [Node.js 18+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - Cuenta en [Google AI Studio](https://aistudio.google.com/) para obtener la `GEMINI_API_KEY`
