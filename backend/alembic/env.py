@@ -34,12 +34,20 @@ target_metadata = Base.metadata
 # Construir una URL sync psycopg2 desde la URL async asyncpg
 # Reemplazar: postgresql+asyncpg://... -> postgresql+psycopg2://...
 # Esto evita problemas de SSL en Windows que asyncpg tiene con Docker local
-_raw_url = settings.DATABASE_URL
+"""_raw_url = settings.DATABASE_URL
 _sync_url = (
     _raw_url
     .replace("postgresql+asyncpg://", "postgresql+psycopg2://")
     .split("?")[0] # strip query params (e.g. ?ssl=disable) not needed for psycopg2
 )
+
+config.set_main_option("sqlalchemy.url", _sync_url)"""
+
+_raw_url = str(settings.DATABASE_URL)
+_sync_url = _raw_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+
+# Imprimimos la URL para estar 100% seguros de a dónde apunta
+print(f"\n🚀 [DEBUG] Alembic se está conectando a: {_sync_url}\n")
 
 config.set_main_option("sqlalchemy.url", _sync_url)
 
