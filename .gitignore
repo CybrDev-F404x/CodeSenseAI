@@ -21,7 +21,6 @@ coverage/
 *.log
 
 # Docs
-docs/images
 docs/Project_Roadmap.pdf
 docs/stitch-prototypes/
 docs/DOCUMENTATION.pdf
