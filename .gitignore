@@ -1,4 +1,4 @@
-# Python
+# Backend
 __pycache__/
 *.py[cod]
 *$py.class
@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 .env
 .DS_Store
 
@@ -17,3 +18,8 @@ build/
 .idea/
 coverage/
 *.log
+
+# Docs
+docs/images
+docs/Project_Roadmap.pdf
+docs/stitch-prototypes/

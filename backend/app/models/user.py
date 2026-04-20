@@ -9,9 +9,10 @@ restricciones y la relacion directa con sus auditorias (tabla Audit)
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Boolean, DateTime, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -42,6 +43,13 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     ) 
+
+    # preferences: Columna JSONB para preferencias del usuario (tema, notificaciones)
+    preferences: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        server_default='{"theme": "indigo", "notifications": {"email": true, "app": true}}',
+    )
 
     # Relaciones
     # audits: Relacion con la tabla Audit

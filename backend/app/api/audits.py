@@ -1,14 +1,17 @@
 """
-Este router administra el ciclo de vida completo de los analisis de codigo:
-1. Orquestacion de Auditorias: Recibe, almacena y recupera los envios del usuario.
-2. Aislamiento de Datos (Multi-tenancy): Garantiza mediante 'get_current_user' 
-   que cada usuario acceda exclusivamente a sus propios reportes.
-3. Capa de Simulacion (Mocking): Implementa una generacion de resultados 
-   predefinidos, facilitando el desarrollo del frontend y las pruebas 
-   antes de la integracion final con el motor de IA
+app/api/audits.py
+
+Orquesta el ciclo completo de auditoría de código:
+1. Recibe el código y lenguaje del usuario autenticado.
+2. Persiste el Audit con status=processing.
+3. Llama al servicio LLM (Gemini) para análisis real.
+4. Persiste el Report con los findings reales.
+5. Actualiza el Audit a status=done (o failed si el LLM falla).
+
+Multi-tenancy: get_current_user garantiza que cada usuario
+acceda exclusivamente a sus propios registros.
 """
 
-import random
 import uuid as uuid_module
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -21,108 +24,104 @@ from app.models.user import User
 from app.models.audit import Audit, AuditStatusEnum
 from app.models.report import Report
 from app.schemas.audit import AuditCreate, AuditRead
+from app.services.llm import analyze_code, LLMError
 
-# --- Router para el manejo de rutas de auditorias ---
 router = APIRouter(prefix="/audits", tags=["Audits"])
 
-# --- Generacion de reportes simulados --- #
-def _simulate_report(audit_id: uuid_module.UUID) -> Report:
-    """Genera un reporte simulado con findings estaticos para demostracion"""
-    findings = {
-        "issues": [
-            {
-                "type": "security",
-                "severity": "high",
-                "line": random.randint(1, 50),
-                "message": "Uso de eval() detectado — riesgo de ejecucion arbitraria de codigo.",
-            },
-            {
-                "type": "style",
-                "severity": "low",
-                "line": random.randint(51, 100),
-                "message": "Nombre de variable no sigue convención snake_case.",
-            },
-            {
-                "type": "performance",
-                "severity": "medium",
-                "line": random.randint(10, 40),
-                "message": "Bucle anidado O(n²) — considere optimizar con un diccionario.",
-            },
-        ],
-        "summary": "3 problemas encontrados: 1 critico, 1 medio, 1 bajo.",
-    }
-    score = round(random.uniform(4.5, 9.5), 2) # Genera un puntaje aleatorio entre 4.5 y 9.5
-    return Report(audit_id=audit_id, findings=findings, score=score) # Devuelve el reporte simulado
 
-
-# --- POST /audits/ ---
-@router.post("/", response_model=AuditRead, status_code=status.HTTP_201_CREATED) # AuditRead elimina la contraseña antes de enviarla por internet
+# ─── POST /audits/ ────────────────────────────────────────────────────────────
+@router.post("/", response_model=AuditRead, status_code=status.HTTP_201_CREATED)
 async def create_audit(
-    payload: AuditCreate, # payload es el cuerpo de la peticion
-    db: AsyncSession = Depends(get_db), # db es la sesion de la base de datos
-    current_user: User = Depends(get_current_user), # current_user es el usuario autenticado
+    payload: AuditCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Crea una nueva auditoria y genera un reporte simulado"""
+    """Crea una nueva auditoría y genera un reporte mediante IA (Gemini)."""
+
+    # 1. Persistir el audit con status=processing
     audit = Audit(
-        user_id=current_user.id, # ID del usuario
-        language=payload.language, # Lenguaje del codigo
-        code_snippet=payload.code_snippet, # Codigo a auditar
-        status=AuditStatusEnum.done, # Estado de la auditoria
+        user_id=current_user.id,
+        language=payload.language,
+        code_snippet=payload.code_snippet,
+        status=AuditStatusEnum.processing,
     )
     db.add(audit)
-    await db.flush() # Obtiene el UUID asignado sin cerrar la transaccion
+    await db.flush()  # obtiene el UUID sin cerrar la transacción
 
-    report = _simulate_report(audit.id) # Genera el reporte simulado
-    db.add(report) # Agrega el reporte a la sesion
-    await db.flush() # Obtiene el UUID asignado sin cerrar la transaccion
-    await db.refresh(audit) # Refresca la auditoria para obtener el UUID
+    # 2. Llamar al LLM
+    try:
+        findings = await analyze_code(
+            language=payload.language.value,
+            code_snippet=payload.code_snippet,
+        )
+    except LLMError as exc:
+        # Marcar como fallido y propagar el error
+        audit.status = AuditStatusEnum.failed
+        await db.flush()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"El análisis de IA falló: {exc}",
+        ) from exc
+
+    # 3. Persistir el reporte con los findings reales
+    report = Report(
+        audit_id=audit.id,
+        findings=findings,
+        score=findings.get("score"),
+    )
+    db.add(report)
+
+    # 4. Marcar el audit como completado
+    audit.status = AuditStatusEnum.done
+    await db.flush()
+    await db.refresh(audit)
     return audit
 
 
-# --- GET /audits/ ---
-@router.get("/", response_model=list[AuditRead]) # AuditRead elimina la contraseña antes de enviarla por internet
+# ─── GET /audits/ ─────────────────────────────────────────────────────────────
+@router.get("/", response_model=list[AuditRead])
 async def list_audits(
-    db: AsyncSession = Depends(get_db), # db es la sesion de la base de datos
-    current_user: User = Depends(get_current_user), # current_user es el usuario autenticado
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Lista todas las auditorias del usuario autenticado"""
+    """Lista todas las auditorías del usuario autenticado."""
     result = await db.execute(
-        select(Audit) # Selecciona la auditoria
-        .where(Audit.user_id == current_user.id) # Filtra por el usuario autenticado
-        .order_by(Audit.created_at.desc()) # Ordena por fecha de creacion descendente
+        select(Audit)
+        .where(Audit.user_id == current_user.id)
+        .order_by(Audit.created_at.desc())
     )
-    return result.scalars().all() # Devuelve todas las auditorias del usuario autenticado
+    return result.scalars().all()
 
 
-# --- GET /audits/{id} ---
-@router.get("/{audit_id}", response_model=AuditRead) # AuditRead elimina la contraseña antes de enviarla por internet
+# ─── GET /audits/{audit_id} ───────────────────────────────────────────────────
+@router.get("/{audit_id}", response_model=AuditRead)
 async def get_audit(
-    audit_id: uuid_module.UUID, # audit_id es el ID de la auditoria
-    db: AsyncSession = Depends(get_db), # db es la sesion de la base de datos
-    current_user: User = Depends(get_current_user), # current_user es el usuario autenticado
+    audit_id: uuid_module.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Devuelve una auditoria especifica (solo si pertenece al usuario)"""
+    """Devuelve una auditoría específica (solo si pertenece al usuario)."""
     result = await db.execute(
-        select(Audit).where(Audit.id == audit_id, Audit.user_id == current_user.id) # Selecciona la auditoria y filtra por el usuario autenticado
+        select(Audit).where(Audit.id == audit_id, Audit.user_id == current_user.id)
     )
-    audit = result.scalar_one_or_none() # Obtiene la auditoria
-    if not audit: # Si la auditoria no existe, lanza una excepcion
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auditoria no encontrada")
+    audit = result.scalar_one_or_none()
+    if not audit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auditoría no encontrada")
     return audit
 
 
-# --- DELETE /audits/{id} ---
-@router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT) # status_code=status.HTTP_204_NO_CONTENT indica que no se devuelve nada
+# ─── DELETE /audits/{audit_id} ───────────────────────────────────────────────
+@router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_audit(
-    audit_id: uuid_module.UUID, # audit_id es el ID de la auditoria
-    db: AsyncSession = Depends(get_db), # db es la sesion de la base de datos
-    current_user: User = Depends(get_current_user), # current_user es el usuario autenticado
+    audit_id: uuid_module.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Elimina una auditoria y su reporte asociado"""
+    """Elimina una auditoría y su reporte asociado (cascade)."""
     result = await db.execute(
-        select(Audit).where(Audit.id == audit_id, Audit.user_id == current_user.id) # Selecciona la auditoria y filtra por el usuario autenticado
+        select(Audit).where(Audit.id == audit_id, Audit.user_id == current_user.id)
     )
-    audit = result.scalar_one_or_none() # Obtiene la auditoria
-    if not audit: # Si la auditoria no existe, lanza una excepcion
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auditoria no encontrada")
-    await db.delete(audit) # Elimina la auditoria
+    audit = result.scalar_one_or_none()
+    if not audit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auditoría no encontrada")
+    await db.delete(audit)

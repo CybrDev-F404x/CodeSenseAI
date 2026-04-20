@@ -7,6 +7,7 @@ criticos (como hashes de contraseñas) en las respuestas salientes hacia el clie
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, EmailStr
 
@@ -25,15 +26,17 @@ class UserLogin(UserBase):
 
 # Esquema para actualizar usuarios
 class UserUpdate(BaseModel):
-    full_name: str | None = None # Nombre completo del usuario (opcional)
-    email: EmailStr | None = None # Correo electronico del usuario (opcional)
-    password: str | None = None # Contraseña del usuario (opcional)
+    full_name: str | None = None         # Nombre completo del usuario (opcional)
+    email: EmailStr | None = None        # Correo electronico del usuario (opcional)
+    password: str | None = None          # Contraseña del usuario (opcional)
+    preferences: dict[str, Any] | None = None  # Preferencias de UI del usuario (opcional)
 
 # Esquema para leer usuarios
 class UserRead(UserBase):
-    id: uuid.UUID # ID del usuario
-    full_name: str | None # Nombre completo del usuario
-    is_active: bool # Estado del usuario
-    created_at: datetime # Fecha de creacion del usuario
+    id: uuid.UUID                        # ID del usuario
+    full_name: str | None                # Nombre completo del usuario
+    is_active: bool                      # Estado del usuario
+    created_at: datetime                 # Fecha de creacion del usuario
+    preferences: dict[str, Any] | None  # Preferencias de UI del usuario
 
     model_config = {"from_attributes": True} # Permite que el esquema se mapee a los atributos del modelo

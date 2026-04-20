@@ -36,6 +36,7 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)): # p
     user = User(
         email=payload.email, # Email del usuario
         hashed_password=hash_password(payload.password), # Aplica hash a la contraseña
+        full_name=payload.full_name, # Nombre completo del usuario
     )
     db.add(user) # Agrega el usuario a la sesion
     await db.flush()   # Obtiene el UUID generado sin cerrar la transaccion
