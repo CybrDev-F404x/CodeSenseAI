@@ -128,6 +128,7 @@ export interface ReportFinding {
   severity: string;
   line: number;
   message: string;
+  suggestion?: string;
 }
 
 export interface Report {
