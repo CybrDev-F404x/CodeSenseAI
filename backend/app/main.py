@@ -1,3 +1,5 @@
+import os
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -31,14 +33,10 @@ app = FastAPI(
 )
 
 # Configuracion de CORS
-origins = [
-    "http://localhost:3000",  # React Frontend (Default)
-    "http://localhost:5173",  # Vite (Alternative)
-]
-
+# Esto evita que el navegador bloquee las peticiones desde Vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -51,6 +49,8 @@ async def root():
         "message": "Welcome to CodeSense AI API",
         "status": "active",
         "version": "1.0.0",
+        "docs": "/docs",
+        "redoc": "/redoc",
     }
 
 
@@ -60,7 +60,7 @@ async def health_check():
 
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(audits_router)
-app.include_router(reports_router)
+app.include_router(auth_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+app.include_router(audits_router, prefix="/api")
+app.include_router(reports_router, prefix="/api")
