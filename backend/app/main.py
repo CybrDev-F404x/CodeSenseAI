@@ -60,7 +60,7 @@ async def health_check():
 
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(auth_router, prefix="/api")
-app.include_router(users_router, prefix="/api")
-app.include_router(audits_router, prefix="/api")
-app.include_router(reports_router, prefix="/api")
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(audits_router)
+app.include_router(reports_router)
