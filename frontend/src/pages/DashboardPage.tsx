@@ -52,14 +52,9 @@ export default function DashboardPage() {
     });
   };
 
-  const realActivity  = getWeeklyActivity();
-  const hasRealData   = realActivity.some(d => d.value > 0);
-  const mockActivity  = [
-    { label: 'Lun', value: 3 }, { label: 'Mar', value: 7 }, { label: 'Mie', value: 5 },
-    { label: 'Jue', value: 12 }, { label: 'Vie', value: 8 }, { label: 'Sab', value: 2 }, { label: 'Dom', value: 4 },
-  ];
-  const activityData = hasRealData ? realActivity : mockActivity;
-  const maxActivity  = Math.max(...activityData.map(d => d.value), 1);
+  const activityData  = getWeeklyActivity();
+  const hasRealData   = activityData.some(d => d.value > 0);
+  const maxActivity   = Math.max(...activityData.map(d => d.value), 1);
 
   const recentAudits = [...audits]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -221,11 +216,12 @@ export default function DashboardPage() {
             </div>
             {totalAudits === 0 ? (
               <p className="text-sm text-themed-muted leading-relaxed font-light italic">
-                "Inicia tu primera auditoría para permitir que la IA perfile tu arquitectura."
+                Inicia tu primera auditoría para permitir que la IA perfile tu arquitectura.
               </p>
             ) : (
               <p className="text-sm text-themed-muted leading-relaxed font-light italic">
-                "Has mantenido un flujo de {totalAudits} auditorías. El sistema detecta una mejora del {avgScore}% en la seguridad de tus módulos."
+                Has mantenido un flujo de <strong className="text-themed-primary">{totalAudits}</strong> auditorías.
+                El sistema registra un score promedio de <strong className="text-themed-accent">{avgScore}/10</strong> en la seguridad de tus módulos.
               </p>
             )}
           </div>
