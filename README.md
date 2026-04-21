@@ -326,7 +326,7 @@ Crea el archivo `backend/.env` con las siguientes variables:
 DATABASE_URL=postgresql+asyncpg://codesense:codesense123@localhost:5433/codesenseai
 
 # ── Seguridad JWT ─────────────────────────────────────────────────
-SECRET_KEY=tu-clave-secreta-muy-larga-y-aleatoria
+SECRET_KEY=tu-clave-secreta
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
