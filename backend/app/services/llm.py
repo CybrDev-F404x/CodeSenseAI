@@ -1,9 +1,9 @@
 """
 app/services/llm.py
 
-Servicio de análisis de código con IA.
-Encapsula toda la lógica de comunicación con Google Gemini:
-  1. Construye un prompt estructurado con el código y lenguaje recibidos.
+Servicio de analisis de codigo con IA.
+Encapsula toda la logica de comunicación con Google Gemini:
+  1. Construye un prompt estructurado con el codigo y lenguaje recibidos.
   2. Llama a la API de Gemini con reintentos automáticos (exponential backoff).
   3. Parsea y valida el JSON devuelto.
   4. Lanza LLMError si la API falla persistentemente o la respuesta no es válida.
@@ -27,7 +27,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# ─── Excepción personalizada ──────────────────────────────────────────────────
+# ─── Excepcion personalizada ──────────────────────────────────────────────────
 
 class LLMError(Exception):
     """Se lanza cuando el LLM falla o devuelve una respuesta inválida."""
@@ -90,7 +90,7 @@ async def _call_gemini_with_retry(llm: ChatGoogleGenerativeAI, messages: list) -
     response = await llm.ainvoke(messages)
     content = response.content
     
-    # Si la respuesta es una lista (común en versiones nuevas de LangChain/Gemini), la unimos
+    # Si la respuesta es una lista (comun en versiones nuevas de LangChain/Gemini), la unimos
     if isinstance(content, list):
         text_parts = []
         for part in content:
@@ -103,7 +103,7 @@ async def _call_gemini_with_retry(llm: ChatGoogleGenerativeAI, messages: list) -
     return content.strip()
 
 
-# ─── Función principal ────────────────────────────────────────────────────────
+# ─── Funcion principal ────────────────────────────────────────────────────────
 
 async def analyze_code(language: str, code_snippet: str) -> dict:
     """
@@ -154,11 +154,11 @@ async def analyze_code(language: str, code_snippet: str) -> dict:
         logger.error("JSON inválido de Gemini: %s", raw[:200])
         raise LLMError(f"JSON inválido en la respuesta de la IA: {exc}") from exc
 
-    # Validación mínima de estructura
+    # Validacion minima de estructura
     if "issues" not in result or "score" not in result:
         raise LLMError("La respuesta de la IA no tiene la estructura esperada (issues/score).")
 
-    # Asegurar que score sea float y esté en rango
+    # Asegurar que score sea float y este en rango
     try:
         result["score"] = max(0.0, min(10.0, float(result["score"])))
     except (TypeError, ValueError):
